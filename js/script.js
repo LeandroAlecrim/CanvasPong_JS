@@ -1,9 +1,8 @@
+const FOREGROUND_COLOR = '#0077aa';
+const BACKGROUND_COLOR = '#FFFFFFF';
+
 window.onload = function () {
   //# region Globals
-  const FOREGROUND_COLOR = '#0077aa';
-  const BACKGROUND_COLOR = '#FFFFFFF';
-  const PADDLE_WIDTH = 10;
-
   const canvas = document.getElementById('canvas');
   const context = canvas.getContext('2d');
 
@@ -14,19 +13,22 @@ window.onload = function () {
   let lastTime;
   //#endregion Globals
 
-  // Run Game
-  init();
+  // Mostra intro por 2s e roda o jogo
+  setTimeout(function () {
+    document.getElementById('intro').classList.replace('intro', 'd-none');
+    init();
+  }, 2000);
 
   //#region Render
   function render() {
-    // clear canvas
+    // limpa o canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // render
+    // renderiza
     renderBackground();
     renderBall();
-    renderPlayerPaddle();
-    renderComputerPaddle();
+    renderPaddle(playerPaddle);
+    renderPaddle(computerPaddle);
     renderScore();
   }
 
@@ -46,27 +48,10 @@ window.onload = function () {
     context.restore();
   }
 
-  function renderPlayerPaddle() {
+  function renderPaddle(paddle) {
     context.save();
     context.fillStyle = FOREGROUND_COLOR;
-    context.fillRect(
-      playerPaddle.posX,
-      playerPaddle.posY,
-      playerPaddle.width,
-      playerPaddle.height
-    );
-    context.restore();
-  }
-
-  function renderComputerPaddle() {
-    context.save();
-    context.fillStyle = FOREGROUND_COLOR;
-    context.fillRect(
-      computerPaddle.posX,
-      computerPaddle.posY,
-      computerPaddle.width,
-      computerPaddle.height
-    );
+    context.fillRect(paddle.posX, paddle.posY, paddle.width, paddle.height);
     context.restore();
   }
 
@@ -87,13 +72,23 @@ window.onload = function () {
   //#region Update
   function update(time) {
     if (lastTime != null) {
-      // standardize the movement speed
-      let delta = time / lastTime;
+      let delta = time / lastTime; // delta padroniza a velocidade de atualização do jogo
 
-      ball.update(delta, canvas, [playerPaddle.rect(), computerPaddle.rect()]);
-      computerPaddle.update(delta, canvas, ball.centerY);
+      // atualiza posição
+      ball.update({
+        delta: delta,
+        heightLimit: canvas.height,
+        paddleRects: [playerPaddle.rect(), computerPaddle.rect()],
+      });
+      computerPaddle.update({
+        delta: delta,
+        heightLimit: canvas.height,
+        ballCenterY: ball.centerY,
+      });
 
-      if (isLose()) handleLose();
+      // checa colisão
+      const ballRect = ball.rect();
+      if (isLose(ballRect)) handleLose(ballRect);
     }
     lastTime = time;
   }
@@ -105,28 +100,26 @@ window.onload = function () {
     canvas.height = window.innerHeight * 0.97;
   }
 
+  // reposiciona palhetas no centro do eixo Y
   function reset() {
-    ball.reset(canvas);
-    computerPaddle.reset(canvas, {
-      posX: canvas.width - 20,
-      posY: 0,
-      width: 10,
-      height: canvas.height / 10,
+    ball.reset({
+      centerX: Math.round(canvas.width / 2),
+      centerY: Math.round(canvas.height / 2),
+    });
+
+    computerPaddle.reset({
+      posX: canvas.width - 2 * PADDLE_WIDTH,
+      posY: Math.round(canvas.height / 2),
     });
   }
 
-  function isLose() {
-    const rect = ball.rect();
+  function isLose(rect) {
     return rect.right >= canvas.width || rect.left <= 0;
   }
 
-  function handleLose() {
-    const rect = ball.rect();
-    if (rect.right >= canvas.width) {
-      score.player++;
-    } else {
-      score.computer++;
-    }
+  function handleLose(rect) {
+    if (rect.right >= canvas.width) score.player++;
+    else if (rect.left <= 0) score.computer++;
     reset();
   }
 
@@ -139,19 +132,24 @@ window.onload = function () {
   function init() {
     resizeCanvas(canvas);
 
-    ball = new Ball(canvas);
-    playerPaddle = new Paddle(canvas, {
+    ball = new Ball({
+      centerX: Math.round(canvas.width / 2),
+      centerY: Math.round(canvas.height / 2),
+      radius: canvas.height / 100,
+    });
+
+    playerPaddle = new Paddle({
       posX: PADDLE_WIDTH,
-      posY: 0,
-      width: PADDLE_WIDTH,
+      posY: Math.round(canvas.height / 2),
       height: canvas.height / 10,
     });
-    computerPaddle = new Paddle(canvas, {
+
+    computerPaddle = new Paddle({
       posX: canvas.width - 2 * PADDLE_WIDTH,
-      posY: 0,
-      width: PADDLE_WIDTH,
+      posY: Math.round(canvas.height / 2),
       height: canvas.height / 10,
     });
+
     score = new Score();
 
     loop();
@@ -159,15 +157,17 @@ window.onload = function () {
   //#endregion Game
 
   //#region Events
-  window.addEventListener('mousemove', (e) => {
+  canvas.addEventListener('mousemove', (e) => {
+    if (!playerPaddle) return;
+
+    // captura posição do mouse
     playerPaddle.posY =
       (e.y / canvas.height) * canvas.height - playerPaddle.height;
 
+    // corrige posição da palheta fora do canvas
     if (playerPaddle.posY < 0) {
       playerPaddle.posY = 0;
-    }
-
-    if (playerPaddle.posY + playerPaddle.height > canvas.height) {
+    } else if (playerPaddle.posY + playerPaddle.height > canvas.height) {
       playerPaddle.posY = canvas.height - playerPaddle.height;
     }
   });
