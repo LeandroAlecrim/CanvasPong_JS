@@ -1,11 +1,24 @@
 const INITIAL_SPEED = 4;
 const SPEED_INCREASE = 0.001;
+const PADDLE_WIDTH = 10;
 
 class Paddle {
-  constructor(canvas, options) {
-    this.reset(canvas, options);
+  /** Cria um objeto Paddle */
+  constructor({
+    posX = 0,
+    posY = 0,
+    width = PADDLE_WIDTH,
+    height = 50,
+    speed = INITIAL_SPEED,
+  }) {
+    this.width = width;
+    this.height = height;
+    this.posX = posX;
+    this.posY = posY;
+    this.speed = speed;
   }
 
+  /** Retorna as posições */
   rect() {
     return {
       left: this.posX,
@@ -15,27 +28,24 @@ class Paddle {
     };
   }
 
-  reset(canvas, options) {
-    this.width = options.width;
-    this.height = options.height;
-    this.posX = options.posX;
-    this.posY = options.posY + Math.round(canvas.height / 2);
-    this.speed = INITIAL_SPEED;
+  /** Reseta as propriedades deste objeto */
+  reset({ posX, posY, speed = INITIAL_SPEED }) {
+    this.posX = posX;
+    this.posY = posY;
+    this.speed = speed;
   }
 
-  update(delta, canvas, ballCenterY) {
-    if (this.posY + this.height / 2 < ballCenterY) {
-      this.posY += this.speed * delta;
-    } else if (this.posY + this.height / 2 > ballCenterY) {
-      this.posY -= this.speed * delta;
-    }
+  /** Atualiza a posição e a direção */
+  update({ delta, heightLimit, ballCenterY }) {
+    const paddleCenterY = this.posY + this.height / 2;
+    const direction = paddleCenterY < ballCenterY ? 1 : -1;
+    this.posY += this.speed * delta * direction;
 
-    if (this.posY < 0) {
+    const rect = this.rect();
+    if (rect.top < 0) {
       this.posY = 0;
-    }
-
-    if (this.posY + this.height > canvas.height) {
-      this.posY = canvas.height - this.height;
+    } else if (rect.bottom > heightLimit) {
+      this.posY = heightLimit - this.height;
     }
   }
 }

@@ -1,11 +1,14 @@
 const INITIAL_VELOCITY = 5;
-const VELOCITY_INCREASE = 0.25;
+const VELOCITY_INCREASE = 0.5;
 
 class Ball {
-  constructor(canvas) {
-    this.reset(canvas);
+  /** Cria um objeto Ball */
+  constructor({ centerX, centerY, radius }) {
+    this.radius = radius;
+    this.reset({ centerX, centerY });
   }
 
+  /** Retorna as posições do quadrado externo a este objeto */
   rect() {
     return {
       left: this.centerX - this.radius,
@@ -15,12 +18,13 @@ class Ball {
     };
   }
 
-  reset(canvas) {
-    this.centerX = Math.round(canvas.width / 2);
-    this.centerY = Math.round(canvas.height / 2);
-    this.radius = canvas.height / 100;
-
+  /** Reseta as propriedades deste objeto */
+  reset({ centerX, centerY }) {
+    this.centerX = centerX;
+    this.centerY = centerY;
+    this.velocity = INITIAL_VELOCITY;
     this.direction = { x: 0 };
+
     while (
       Math.abs(this.direction.x) <= 0.2 ||
       Math.abs(this.direction.x) >= 0.9
@@ -28,27 +32,30 @@ class Ball {
       const heading = randomNumberBetween(0, 2 * Math.PI);
       this.direction = { x: Math.cos(heading), y: Math.sin(heading) };
     }
-
-    this.velocity = INITIAL_VELOCITY;
   }
 
-  update(delta, canvas, paddleRects) {
+  /** Atualiza a posição e a direção */
+  update({ delta, heightLimit, paddleRects }) {
     this.centerX += this.direction.x * this.velocity * delta;
     this.centerY += this.direction.y * this.velocity * delta;
 
+    // "Quica" a bola no eixo Y
     const rect = this.rect();
-
-    if (rect.bottom >= canvas.height || rect.top <= 0) {
+    if (rect.bottom >= heightLimit || rect.top <= 0) {
       this.direction.y *= -1;
     }
 
+    // se houver colisão com alguma palheta, inverte a direção no eixoX e
+    // muda aleatoriamente a direção no eixo Y
     if (paddleRects.some((r) => isCollision(r, rect))) {
       this.direction.x *= -1;
+      this.direction.y = randomNumberBetween(-1, 1);
       this.velocity += VELOCITY_INCREASE;
     }
   }
 }
 
+//#region Functions
 function randomNumberBetween(min, max) {
   return Math.random() * (max - min) + min;
 }
@@ -61,3 +68,4 @@ function isCollision(rect1, rect2) {
     rect1.bottom >= rect2.top
   );
 }
+//#endregion Functions
